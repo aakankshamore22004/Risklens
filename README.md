@@ -40,7 +40,7 @@ patient-disease-risk-predictor/
 ### Clone the repository
 
 ```bash
-git clone https://github.com/aakankshamore22004/Risklens.git
+git clone https://github.com/SurajMoreTech/Risklens.git
 cd Risklens
 ```
 
@@ -77,9 +77,8 @@ Download the CDC BRFSS dataset from [Kaggle](https://www.kaggle.com/datasets/ale
 - Cloud deployment
 - Role-based access control
 
-## 👩‍💻 Author
+## 👨‍💻 Author
 
-**Aakanksha More**
+**Suraj More**
 
-- GitHub: [aakankshamore22004](https://github.com/aakankshamore22004)
-- Email: aakankshamore22004@gmail.com
+- GitHub: [SurajMoreTech](https://github.com/SurajMoreTech)
