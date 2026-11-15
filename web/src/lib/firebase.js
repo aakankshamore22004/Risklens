@@ -8,6 +8,9 @@ const isDummyConfig =
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "dummy_key",
+  // IMPORTANT: set authDomain to your custom hosting domain (not *.firebaseapp.com)
+  // so Safari / iOS do not treat Google's auth cookie as third-party.
+  // e.g. "risklens-khaki.vercel.app"  or your own domain.
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "dummy.firebaseapp.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "dummy-project",
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "dummy.appspot.com",
@@ -20,16 +23,20 @@ let app = null;
 let auth = null;
 let db = null;
 
+// A promise that resolves once Firebase persistence is configured.
+// auth.js awaits this before calling onAuthStateChanged so the
+// persistence layer is ready before we read cached auth state.
+let authReady = Promise.resolve();
+
 if (!isDummyConfig) {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   auth = getAuth(app);
-  // Use browserLocalPersistence (backed by indexedDB) for maximum
-  // cross-browser reliability. This survives page refreshes and works
-  // even when localStorage/sessionStorage are blocked.
-  setPersistence(auth, browserLocalPersistence).catch((err) => {
+  // setPersistence must resolve BEFORE onAuthStateChanged is attached;
+  // otherwise IndexedDB may not be ready and the cached user is missed.
+  authReady = setPersistence(auth, browserLocalPersistence).catch((err) => {
     console.warn("Firebase persistence setup warning:", err);
   });
   db = getFirestore(app);
 }
 
-export { app, auth, db, isDummyConfig };
+export { app, auth, db, isDummyConfig, authReady };

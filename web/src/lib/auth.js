@@ -10,7 +10,7 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from "firebase/auth";
-import { auth, isDummyConfig } from "./firebase";
+import { auth, isDummyConfig, authReady } from "./firebase";
 
 const AuthContext = createContext(null);
 
@@ -64,26 +64,42 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // Listen for auth state changes (fires on page load with cached user)
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
+    // Wait for persistence to be configured, then check for a redirect
+    // result first (so the user is set before onAuthStateChanged fires),
+    // then attach the listener. This eliminates the race where the route
+    // guard sees loading=false + user=null and kicks the user back to /.
+    let unsubscribe = () => {};
+    let cancelled = false;
+
+    authReady.then(() => {
+      if (cancelled) return;
+
+      // 1. Pick up any pending redirect result (mobile Safari fallback).
+      getRedirectResult(auth)
+        .then((result) => {
+          if (result?.user && !cancelled) {
+            setUser(result.user);
+          }
+        })
+        .catch((error) => {
+          console.warn("Redirect result check:", error.code);
+        });
+
+      // 2. Attach the persistent listener — this fires immediately with the
+      //    cached user from IndexedDB (browserLocalPersistence), so the page
+      //    never flashes "logged out" on refresh.
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        if (!cancelled) {
+          setUser(firebaseUser);
+          setLoading(false);
+        }
+      });
     });
 
-    // Check for redirect result (fallback if popup was blocked)
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          setUser(result.user);
-        }
-      })
-      .catch((error) => {
-        // Redirect result errors are non-fatal; the onAuthStateChanged
-        // listener is the primary auth state source.
-        console.warn("Redirect result check:", error.code);
-      });
-
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   const signInWithGoogle = async (nextPath) => {
